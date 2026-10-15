@@ -308,6 +308,45 @@ class HfJson(unittest.TestCase):
         with mock.patch.object(M, "hf_json", lambda *a, **k: tree):
             self.assertEqual([f["path"] for f in M.list_files("evil/model")], ["good-model-Q4_0.gguf"])
 
+    def test_list_files_follows_huggingface_cursor_pagination(self):
+        class Resp(io.BytesIO):
+            def __init__(self, body, headers=None):
+                super().__init__(json.dumps(body).encode())
+                self.headers = headers or {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        next_url = f"{M.HF}/api/models/acme/large/tree/main?recursive=true&cursor=page-2"
+        replies = [
+            Resp(fixture("large_tree_page_1.json"), {"Link": f'<{next_url}>; rel="next"'}),
+            Resp(fixture("large_tree_page_2.json")),
+        ]
+        with mock.patch.object(M, "open_url", side_effect=replies) as opened:
+            files = M.list_files("acme/large")
+
+        self.assertEqual([f["path"] for f in files], ["first.gguf", "second.safetensors"])
+        self.assertEqual(opened.call_args_list[1].args[0], next_url)
+
+    def test_hf_json_does_not_paginate_non_tree_responses(self):
+        class Resp(io.BytesIO):
+            headers = {"Link": f'<{M.HF}/api/models/acme/other?cursor=page-2>; rel="next"'}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        first_page = {"id": "acme/model", "tags": ["text-to-image"]}
+        with mock.patch.object(M, "open_url", return_value=Resp(json.dumps(first_page).encode())) as opened:
+            self.assertEqual(M.hf_json("/api/models/acme/model"), first_page)
+
+        opened.assert_called_once()
+
 
 # ----------------------------------------------------------------------------------------- network policy
 class _Handler(BaseHTTPRequestHandler):

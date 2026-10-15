@@ -1,0 +1,9 @@
+[
+  {
+    "type": "file",
+    "path": "second.safetensors",
+    "lfs": {
+      "size": 2048
+    }
+  }
+]

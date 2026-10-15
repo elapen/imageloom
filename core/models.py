@@ -285,21 +285,42 @@ def open_url(url: str, headers: dict | None = None, token: str | None = None, ti
 
 
 def hf_json(path: str, token: str | None = None, timeout: int = 40):
-    try:
-        with open_url(HF + path, token=token, timeout=timeout) as r:
-            raw = r.read(MAX_API_BYTES + 1)
-    except urllib.error.HTTPError as exc:
-        if exc.code in (401, 403):
-            raise PermissionError("the repository is private or requires accepting its terms: a Hugging Face token is needed") from exc
-        if exc.code == 404:
-            raise ValueError("repository not found (check the link)") from exc
-        raise
-    if len(raw) > MAX_API_BYTES:
-        raise ValueError("Hugging Face sent an unexpectedly large answer")
-    try:
-        return json.loads(raw)
-    except ValueError as exc:
-        raise ValueError("Hugging Face did not answer with JSON") from exc
+    url = HF + path
+    pages = []
+    visited = set()
+
+    while url:
+        if url in visited:
+            raise ValueError("Hugging Face returned a pagination loop")
+        visited.add(url)
+        try:
+            with open_url(url, token=token, timeout=timeout) as r:
+                raw = r.read(MAX_API_BYTES + 1)
+                link = getattr(r, "headers", {}).get("Link", "")
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                raise PermissionError("the repository is private or requires accepting its terms: a Hugging Face token is needed") from exc
+            if exc.code == 404:
+                raise ValueError("repository not found (check the link)") from exc
+            raise
+        if len(raw) > MAX_API_BYTES:
+            raise ValueError("Hugging Face sent an unexpectedly large answer")
+        try:
+            data = json.loads(raw)
+        except ValueError as exc:
+            raise ValueError("Hugging Face did not answer with JSON") from exc
+
+        # Only repository trees are cursor-paginated. Other API responses must keep
+        # hf_json's original single-document semantics even if they contain a Link header.
+        match = re.search(r'<([^>]+)>\s*;\s*rel=["\']?next["\']?', link, re.IGNORECASE) if "/tree/" in path else None
+        if not match and not pages:
+            return data
+        if not isinstance(data, list):
+            raise ValueError("Hugging Face sent an unexpected paginated answer")
+        pages.extend(data)
+        url = match.group(1) if match else ""
+
+    return pages
 
 
 def clean_repo_path(p) -> bool:
