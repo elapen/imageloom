@@ -108,7 +108,7 @@ def find_sd_cli() -> Path:
         cands.append(Path(os.environ["IMAGELOOM_SD_CLI"]))
     if os.environ.get("IMAGELOOM_ENGINE_DIR"):
         cands.append(Path(os.environ["IMAGELOOM_ENGINE_DIR"]) / f"sd-cli{EXE}")
-    cands += [DATA / "sd" / "bin" / f"sd-cli{EXE}", DATA / "engine" / f"sd-cli{EXE}", CODE.parent / "engine" / f"sd-cli{EXE}", CODE / "engine" / f"sd-cli{EXE}"]
+    cands += [DATA / "sd" / "bin" / f"sd-cli{EXE}", DATA / "engine" / f"sd-cli{EXE}", CODE.parent / "engine" / f"sd-cli{EXE}", CODE.parent.parent / "engine" / f"sd-cli{EXE}", CODE / "engine" / f"sd-cli{EXE}"]
     for c in cands:
         if c.is_file():
             return c

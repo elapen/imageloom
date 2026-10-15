@@ -31,7 +31,7 @@ find "$RES/python" -name "__pycache__" -type d -prune -exec rm -rf {} + 2>/dev/n
 
 echo "==> 3/7 server + UI"
 mkdir -p "$RES/core"
-cp "$ROOT"/core/*.py "$RES/core/"; cp -R "$ROOT/core/web" "$RES/core/web"
+cp "$ROOT"/core/*.py "$RES/core/"; cp "$ROOT/core/imageloom" "$RES/core/imageloom"; chmod +x "$RES/core/imageloom"; cp -R "$ROOT/core/web" "$RES/core/web"
 sed -i '' "s/^VERSION = .*/VERSION = \"${VER}\"/" "$RES/core/server.py"
 
 echo "==> 4/7 engine (stable-diffusion.cpp sd-cli, official release, sha256 checked)"

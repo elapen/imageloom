@@ -12,6 +12,7 @@
   imageloom models                                                   list models;  `models use ID`, `models rm ID`
   imageloom models add https://huggingface.co/owner/repo [--file F] download a new model from a Hugging Face link and register it
   imageloom ui | status | stop | serve | doctor
+  imageloom mcp                                                      MCP server on stdio for Claude Desktop, Cursor, VS Code ... (docs/MCP.md)
 
 Talks to the local server (auto-started on demand). Stdout carries only results
 (file paths, or JSON with --json); progress and errors go to stderr.
@@ -332,27 +333,32 @@ def emit(args, paths: list, originals: list, meta: dict) -> int:
 SELECTED: dict = {"model": None, "chat": None, "quality": None}
 
 
-def resolve_model(query: str | None, edit: bool) -> dict | None:
-    """Pick a model by id or by part of its name; without a query use the active model (edit: any model that can edit)."""
+def pick_model(query: str | None, edit: bool) -> tuple[dict | None, str | None]:
+    """Pick a model by id or by part of its name; without a query use the active model (edit: any model that can edit).
+    Returns (model, None), or (None, why not). Shared with the MCP server (core/imageloom_mcp.py)."""
     d = call("/api/models")[1]
     models = d.get("models", [])
     if query:
         q = query.lower()
         hit = [m for m in models if m["id"] == query] or [m for m in models if q in m["id"].lower() or q in m["name"].lower()]
         if not hit:
-            eprint(f"imageloom: no model matches '{query}'. Installed: " + ", ".join(m["id"] for m in models))
-            return None
+            return None, f"no model matches '{query}'. Installed: " + ", ".join(m["id"] for m in models)
         m = hit[0]
     else:
         m = next((x for x in models if x["id"] == d.get("active")), None) or next((x for x in models if x.get("ready")), None)
         if edit and m and not m.get("can_edit"):
             m = next((x for x in models if x.get("ready") and x.get("can_edit")), m)
     if not m or not m.get("ready"):
-        eprint("imageloom: the model is not ready (" + (m["status"] if m else "none installed") + "); see `imageloom models` or `imageloom doctor`.")
-        return None
+        return None, "the model is not ready (" + (m["status"] if m else "none installed") + "); see `imageloom models` or `imageloom doctor`."
     if edit and not m.get("can_edit"):
-        eprint(f"imageloom: {m['name']} cannot edit photos; use a model tagged 'edit' (see `imageloom models`).")
-        return None
+        return None, f"{m['name']} cannot edit photos; use a model tagged 'edit' (see `imageloom models`)."
+    return m, None
+
+
+def resolve_model(query: str | None, edit: bool) -> dict | None:
+    m, why = pick_model(query, edit)
+    if why:
+        eprint("imageloom:", why)
     return m
 
 
@@ -631,10 +637,19 @@ def cmd_doctor(_: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_mcp(argv: list) -> int:
+    """MCP server on stdio for Claude Desktop, Claude Code, Cursor, VS Code, Zed, Cline ... (docs/MCP.md). Reuses this module's helpers."""
+    sys.path.insert(0, str(ROOT))
+    import imageloom_mcp
+    return imageloom_mcp.main(argv, cli=sys.modules[__name__])
+
+
 def run(argv: list) -> int:
     subs = {"ui": cmd_ui, "status": cmd_status, "stop": cmd_stop, "serve": cmd_serve, "doctor": cmd_doctor}
     if argv and argv[0] in subs:
         return subs[argv[0]](argparse.Namespace())
+    if argv and argv[0] == "mcp":
+        return cmd_mcp(argv[1:])
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("-q", "--quality", choices=list(AREA), default="fast",
                         help="fast=~768px (~4 min), standard=~1024px (~7 min), hq=~1536px, max=~2048px (long; heavy on 16 GB). Default fast")

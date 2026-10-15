@@ -161,7 +161,8 @@ need "$ENG/sd-cli.exe" "$ENG/sd-server.exe" "$ENG/stable-diffusion.dll" "$ENG/gg
 
 echo "==> 4/8 app code (server + UI + Windows host)"
 mkdir -p "$STAGE/app/core"
-cp "$ROOT"/core/*.py "$STAGE/app/core/"             # server.py and the sibling modules it imports (models.py, ...); not the `imageloom` CLI
+cp "$ROOT"/core/*.py "$STAGE/app/core/"             # server.py and the sibling modules it imports (models.py, imageloom_mcp.py, ...)
+cp "$ROOT/core/imageloom" "$STAGE/app/core/imageloom"  # the CLI (also imported by the MCP server)
 cp -R "$ROOT/core/web" "$STAGE/app/core/web"
 cp "$WIN/app.py" "$STAGE/app/app.py"
 sed -i.bak "s/^VERSION = .*/VERSION = \"${VER}\"/" "$STAGE/app/core/server.py" && rm -f "$STAGE/app/core/server.py.bak"

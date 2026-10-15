@@ -123,6 +123,19 @@ imageloom models add https://huggingface.co/leejet/Z-Image-Turbo-GGUF --dry-run
 CLI требует только Python 3.9+. Он общается с сервером запущенного приложения или поднимает свой. Скопируйте [`skills/imageloom`](skills/imageloom/SKILL.md) в `~/.claude/skills/` или
 `~/.cursor/skills/` (вариант для Hermes: [`skills/hermes`](skills/hermes/imageloom/SKILL.md)), и ваш кодинг-агент сам сможет создавать и править картинки для проектов.
 
+### MCP-сервер
+
+ImageLoom умеет работать как сервер [Model Context Protocol](https://modelcontextprotocol.io): Claude Desktop, Claude Code, Cursor, VS Code, Zed, Cline и любой другой MCP-клиент могут локально создавать,
+править, увеличивать и экспортировать картинки и управлять моделями (stdio, чистая стандартная библиотека Python 3.9+, без новых зависимостей и телеметрии):
+
+```bash
+claude mcp add imageloom -- python3 /ABS/PATH/TO/imageloom/core/imageloom mcp      # Claude Code; остальные клиенты: docs/MCP.md
+```
+
+Двенадцать инструментов: `generate_image`, `edit_image`, `upscale_image`, `export_image`, `get_job`, `wait_for_job`, `cancel_job`, `list_jobs`, `list_models`, `add_model`, `set_default_model`, `recent_images`.
+Картинки делаются минутами, поэтому генерация асинхронная: инструмент сразу возвращает номер задачи, а клиент опрашивает `wait_for_job` (не дольше 50 с за вызов). Результат приходит путями к файлам и уменьшенным превью;
+`add_model` сначала показывает план (пробный запуск) и спрашивает, прежде чем качать гигабайты. Настройка для каждого клиента, справочник по инструментам и заметки о безопасности: **[docs/MCP.md](docs/MCP.md)** (на английском).
+
 ## Приватность и ответственность
 
 - Промпты, картинки и история не покидают компьютер. Сеть используется только по вашему действию: загрузки с Hugging Face и релиз движка с GitHub. Телеметрии нет.
