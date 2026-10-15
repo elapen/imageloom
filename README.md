@@ -69,9 +69,9 @@ No cloud, no account, no Python setup, nothing leaves your computer.
 
 | Platform | Get it | Notes |
 |---|---|---|
-| **macOS** (Apple Silicon, macOS 13+) | [`ImageLoom-1.0.0-macOS-arm64.dmg`](https://github.com/elapen/imageloom/releases/latest) | Drag to Applications. The app is not notarized: right-click → **Open** the first time (or System Settings → Privacy & Security → **Open Anyway**). |
+| **macOS** (Apple Silicon, macOS 13+) | [`ImageLoom-1.1.0-macOS-arm64.dmg`](https://github.com/elapen/imageloom/releases/latest) | Drag to Applications. The app is not notarized: right-click → **Open** the first time (or System Settings → Privacy & Security → **Open Anyway**). |
 | macOS via Homebrew | `brew install --cask elapen/tap/imageloom` | Same app, installed by cask. |
-| **Windows** 10/11 x64, *experimental* | [`ImageLoom-1.0.0-Windows-x64-Setup.exe`](https://github.com/elapen/imageloom/releases/latest) or the portable `.zip` | Built from macOS and **not yet run on real Windows**: please report what you see. SmartScreen will warn (unsigned). Needs a Vulkan GPU. |
+| **Windows** 10/11 x64, *experimental* | [`ImageLoom-1.1.0-Windows-x64-Setup.exe`](https://github.com/elapen/imageloom/releases/latest) or the portable `.zip` | Built from macOS and **not yet run on real Windows**: please report what you see. SmartScreen will warn (unsigned). Needs a Vulkan GPU. |
 | From source (any OS with Python 3.9+) | `pip install -r core/requirements.txt && python3 core/server.py` | Open http://127.0.0.1:7870. Linux is untested. |
 
 **First run.** A wizard lists exactly what it will download (engine, the default model, upscalers) and how big it is before it starts, and shows progress and speed. The default

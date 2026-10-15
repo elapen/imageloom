@@ -67,9 +67,9 @@
 
 | Платформа | Где взять | Примечания |
 |---|---|---|
-| **macOS** (Apple Silicon, macOS 13+) | [`ImageLoom-1.0.0-macOS-arm64.dmg`](https://github.com/elapen/imageloom/releases/latest) | Перетащите в «Программы». Приложение без нотаризации: в первый раз ПКМ → **Открыть** (или «Системные настройки → Конфиденциальность и безопасность → **Всё равно открыть**»). |
+| **macOS** (Apple Silicon, macOS 13+) | [`ImageLoom-1.1.0-macOS-arm64.dmg`](https://github.com/elapen/imageloom/releases/latest) | Перетащите в «Программы». Приложение без нотаризации: в первый раз ПКМ → **Открыть** (или «Системные настройки → Конфиденциальность и безопасность → **Всё равно открыть**»). |
 | macOS через Homebrew | `brew install --cask elapen/tap/imageloom` | То же приложение. |
-| **Windows** 10/11 x64, *экспериментально* | [`ImageLoom-1.0.0-Windows-x64-Setup.exe`](https://github.com/elapen/imageloom/releases/latest) или portable `.zip` | Собрано с macOS и **ещё не запускалось на настоящей Windows**: напишите, что получилось. SmartScreen предупредит (без подписи). Нужна видеокарта с Vulkan. |
+| **Windows** 10/11 x64, *экспериментально* | [`ImageLoom-1.1.0-Windows-x64-Setup.exe`](https://github.com/elapen/imageloom/releases/latest) или portable `.zip` | Собрано с macOS и **ещё не запускалось на настоящей Windows**: напишите, что получилось. SmartScreen предупредит (без подписи). Нужна видеокарта с Vulkan. |
 | Из исходников (любая ОС, Python 3.9+) | `pip install -r core/requirements.txt && python3 core/server.py` | Откройте http://127.0.0.1:7870. Linux не проверялся. |
 
 **Первый запуск.** Мастер заранее показывает, что именно будет скачано (движок, модель по умолчанию, апскейлеры) и сколько это весит. Модель по умолчанию **Qwen-Image 2.1 Turbo Q8** занимает около 18 ГБ;
