@@ -2,6 +2,7 @@
 Every process gets a throwaway HOME and data folder; the engine is never present, so sd-cli is never started."""
 from __future__ import annotations
 
+import argparse
 import http.client
 import importlib.machinery
 import importlib.util
@@ -270,6 +271,21 @@ class Cli(Sandbox):
         self.assertIn("MISSING", r.stdout)
         self.assertIn("sd-cli engine", r.stdout)
 
+    def test_batch_reports_bad_files_without_starting_the_server(self):
+        missing = self.cli("batch", str(self.home / "missing.txt"))
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn("cannot read batch file", missing.stderr)
+        self.assertEqual(missing.stdout, "")
+        self.no_traceback(missing)
+
+        empty = self.home / "empty.txt"
+        empty.write_text("\n# only a comment\n", encoding="utf-8")
+        result = self.cli("batch", str(empty))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("contains no prompts", result.stderr)
+        self.assertEqual(result.stdout, "")
+        self.no_traceback(result)
+
 
 class CliInProcess(unittest.TestCase):
     """The module without running a command: the wrapper, argument checks and external-tool calls."""
@@ -347,6 +363,65 @@ class CliInProcess(unittest.TestCase):
         for bad in ("x", "1:0", "0:1", "-1:2", "1:2:3", "1000:1"):
             with self.assertRaises(self.cli.CliError):
                 self.cli.dims(bad, "fast")
+
+    def test_batch_file_parsing(self):
+        source = self.tmp / "prompts.txt"
+        source.write_text(
+            "# queued in order\n"
+            '\"a red fox in snow\" size=1024x768 model=qwen21\n'
+            "minimal blue logo model=z-image\n"
+            "sunset over the sea\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            self.cli.parse_batch_file(source),
+            [
+                {"prompt": "a red fox in snow", "size": "1024x768", "model": "qwen21"},
+                {"prompt": "minimal blue logo", "size": None, "model": "z-image"},
+                {"prompt": "sunset over the sea", "size": None, "model": None},
+            ],
+        )
+
+    def test_batch_file_rejects_ambiguous_rows_before_running(self):
+        cases = {
+            "size=512x512": "prompt is empty",
+            "fox size=512x512 size=768x768": "duplicate size",
+            "fox model=": "model cannot be empty",
+            "'unterminated": "No closing quotation",
+        }
+        for text, message in cases.items():
+            with self.subTest(text):
+                source = self.tmp / "bad.txt"
+                source.write_text(text + "\n", encoding="utf-8")
+                with self.assertRaises(self.cli.CliError) as cm:
+                    self.cli.parse_batch_file(source)
+                self.assertIn(message, str(cm.exception))
+
+    def test_batch_runs_sequentially_with_json_output_and_line_overrides(self):
+        source = self.tmp / "prompts.txt"
+        source.write_text("first size=1024x768 model=one\nsecond\n", encoding="utf-8")
+        output = self.tmp / "results"
+        args = argparse.Namespace(
+            file=str(source), quality="fast", size=None, count=1, seed=None, output=str(output), json=False,
+            open=True, upscale=None, transparent=False, model="default", chat=None, up_model="quality", ratio="1:1",
+        )
+        seen = []
+
+        def generate(item):
+            seen.append(item)
+            return 0
+
+        with mock.patch.object(self.cli, "cmd_generate", generate):
+            self.assertEqual(self.cli.cmd_batch(args), 0)
+        self.assertEqual([item.prompt for item in seen], ["first", "second"])
+        self.assertEqual([(item.size, item.model) for item in seen], [("1024x768", "one"), (None, "default")])
+        self.assertTrue(all(item.json for item in seen))
+        self.assertTrue(all(item.output == str(output) and item.open for item in seen))
+
+        args.output = str(self.tmp / "one.png")
+        with self.assertRaises(self.cli.CliError) as cm:
+            self.cli.cmd_batch(args)
+        self.assertIn("must be a directory", str(cm.exception))
 
     def test_png_size_reads_only_the_header(self):
         p = self.tmp / "x.png"

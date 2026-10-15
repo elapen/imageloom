@@ -121,7 +121,10 @@ imageloom "a red fox head logo, flat vector style" --transparent -o fox.png
 imageloom export fox.png --format svg --preset logo
 imageloom upscale picture.png --to 4k
 imageloom models add https://huggingface.co/leejet/Z-Image-Turbo-GGUF --dry-run
+imageloom batch prompts.txt  # one JSON result per non-empty line
 ```
+
+Batch files accept one prompt per line. Add optional `size=WxH` and `model=ID` fields anywhere on a line; quoted prompt text is also accepted. Blank lines and lines beginning with `#` are ignored.
 
 The CLI needs only Python 3.9+. It talks to the server of a running app, or starts one. Copy [`skills/imageloom`](skills/imageloom/SKILL.md) into `~/.claude/skills/` or
 `~/.cursor/skills/` (a Hermes variant is in [`skills/hermes`](skills/hermes/imageloom/SKILL.md)) and your coding agent can create and edit images for your projects on its own.

@@ -118,7 +118,10 @@ imageloom "логотип: голова лисы, плоский векторн�
 imageloom export fox.png --format svg --preset logo
 imageloom upscale picture.png --to 4k
 imageloom models add https://huggingface.co/leejet/Z-Image-Turbo-GGUF --dry-run
+imageloom batch prompts.txt  # один JSON-результат на каждую непустую строку
 ```
+
+В пакетном файле каждая строка содержит один промпт. В строку можно добавить поля `size=ШИРИНАxВЫСОТА` и `model=ID`; текст промпта также можно заключить в кавычки. Пустые строки и строки, начинающиеся с `#`, пропускаются.
 
 CLI требует только Python 3.9+. Он общается с сервером запущенного приложения или поднимает свой. Скопируйте [`skills/imageloom`](skills/imageloom/SKILL.md) в `~/.claude/skills/` или
 `~/.cursor/skills/` (вариант для Hermes: [`skills/hermes`](skills/hermes/imageloom/SKILL.md)), и ваш кодинг-агент сам сможет создавать и править картинки для проектов.

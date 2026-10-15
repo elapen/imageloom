@@ -10,6 +10,7 @@
   imageloom "..." --upscale 4k                                       create small, then upscale to 4K automatically
   imageloom "..." -m z-image                                         pick an installed model (id or part of the name)
   imageloom models                                                   list models;  `models use ID`, `models rm ID`
+  imageloom batch prompts.txt                                        generate one JSON result per prompt line
   imageloom models add https://huggingface.co/owner/repo [--file F] download a new model from a Hugging Face link and register it
   imageloom ui | status | stop | serve | doctor
 
@@ -24,6 +25,7 @@ import argparse
 import json
 import math
 import os
+import shlex
 import shutil
 import struct
 import subprocess
@@ -394,6 +396,58 @@ def cmd_generate(args: argparse.Namespace) -> int:
     return finish(args, wait_job(job["id"], "gen"), args.prompt, w, h)
 
 
+def parse_batch_file(path: Path) -> list[dict[str, str | None]]:
+    """Read prompt lines, extracting optional size= and model= fields."""
+    try:
+        lines = path.expanduser().read_text(encoding="utf-8-sig").splitlines()
+    except OSError as exc:
+        raise CliError(f"cannot read batch file {path}: {exc.strerror or exc}", 2) from None
+
+    rows = []
+    for line_no, raw in enumerate(lines, 1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        try:
+            tokens = shlex.split(raw, posix=True)
+        except ValueError as exc:
+            raise CliError(f"{path}:{line_no}: {exc}", 2) from None
+        fields: dict[str, str] = {}
+        prompt = []
+        for token in tokens:
+            key, sep, value = token.partition("=")
+            if sep and key in ("size", "model"):
+                if not value:
+                    raise CliError(f"{path}:{line_no}: {key} cannot be empty", 2)
+                if key in fields:
+                    raise CliError(f"{path}:{line_no}: duplicate {key} field", 2)
+                fields[key] = value
+            else:
+                prompt.append(token)
+        if not prompt:
+            raise CliError(f"{path}:{line_no}: prompt is empty", 2)
+        rows.append({"prompt": " ".join(prompt), "size": fields.get("size"), "model": fields.get("model")})
+    if not rows:
+        raise CliError(f"batch file {path} contains no prompts", 2)
+    return rows
+
+
+def cmd_batch(args: argparse.Namespace) -> int:
+    rows = parse_batch_file(Path(args.file))
+    if args.output and Path(args.output).suffix:
+        raise CliError("batch --output must be a directory so results do not overwrite each other", 2)
+    for row in rows:
+        item = argparse.Namespace(**vars(args))
+        item.prompt = row["prompt"]
+        item.size = row["size"] or args.size
+        item.model = row["model"] or args.model
+        item.json = True
+        SELECTED.update(model=item.model, chat=item.chat, quality=list(AREA).index(item.quality))
+        result = cmd_generate(item)
+        if result:
+            return result
+    return 0
+
+
 def cmd_edit(args: argparse.Namespace) -> int:
     inputs = [Path(p).expanduser().resolve() for p in args.input]
     for p in inputs:
@@ -649,6 +703,15 @@ def run(argv: list) -> int:
     common.add_argument("-m", "--model", help="model id or part of its name (see `imageloom models`); default = the model chosen in the app")
     common.add_argument("--chat", help="put the result into this chat id of the Studio app (default: the archive)")
     common.add_argument("--up-model", choices=["quality", "fast", "illustration"], default="quality", help="upscaler for --upscale (default quality)")
+    if argv and argv[0] == "batch":
+        p = argparse.ArgumentParser(
+            prog="imageloom batch",
+            parents=[common],
+            description="Generate prompts sequentially. Each non-empty line is a prompt with optional size=WxH and model=ID fields.",
+        )
+        p.add_argument("file", help="UTF-8 text file with one prompt per line; blank lines and lines beginning with # are ignored")
+        p.add_argument("-r", "--ratio", default="1:1", help="default aspect ratio when a line has no size= field (default 1:1)")
+        return cmd_batch(p.parse_args(argv[1:]))
     if argv and argv[0] == "models":
         return cmd_models(argv[1:])
     if argv and argv[0] == "export":
